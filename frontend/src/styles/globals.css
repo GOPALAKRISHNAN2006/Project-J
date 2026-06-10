@@ -1,0 +1,359 @@
+/* ── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Root Variables ────────────────────────────────────────────────────────── */
+:root {
+  --jarvis-primary: #00d4ff;
+  --jarvis-secondary: #00ff88;
+  --jarvis-accent: #ffaa00;
+  --jarvis-bg: #080c18;
+  --jarvis-bg-2: #0d1526;
+  --jarvis-danger: #ff4455;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Base Reset ──────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--jarvis-bg);
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Scrollbar Styling ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 212, 255, 0.03);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.25);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.45);
+}
+
+/* ── JARVIS Component Classes ─────────────────────────────────────────────── */
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply bg-gradient-to-br from-jarvis-bg-2/80 to-jarvis-bg-3/60;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 212, 255, 0.12);
+    border-radius: 12px;
+  }
+
+  /* Glass Card Hover */
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+  .glass-card-hover:hover {
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+    transform: translateY(-1px);
+  }
+
+  /* Neon Text */
+  .text-neon {
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.6), 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+  .text-neon-green {
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+  }
+  .text-neon-amber {
+    color: #ffaa00;
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.6);
+  }
+
+  /* Glow Border */
+  .border-glow {
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.15), inset 0 0 12px rgba(0, 212, 255, 0.05);
+  }
+  .border-glow-active {
+    border: 1px solid rgba(0, 212, 255, 0.7);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3), inset 0 0 20px rgba(0, 212, 255, 0.08);
+  }
+
+  /* JARVIS Button */
+  .btn-jarvis {
+    @apply relative overflow-hidden font-orbitron font-semibold uppercase tracking-wider;
+    @apply px-6 py-2.5 rounded-lg transition-all duration-300;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 212, 255, 0.05));
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    color: #00d4ff;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+  .btn-jarvis:hover {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.25), rgba(0, 212, 255, 0.1));
+    border-color: rgba(0, 212, 255, 0.7);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
+    transform: translateY(-1px);
+  }
+  .btn-jarvis:active {
+    transform: translateY(0);
+  }
+
+  .btn-jarvis-solid {
+    @apply btn-jarvis;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    border-color: #00d4ff;
+    color: #080c18;
+    font-weight: 700;
+  }
+  .btn-jarvis-solid:hover {
+    background: linear-gradient(135deg, #33ddff, #00b8e6);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  }
+
+  .btn-jarvis-danger {
+    @apply btn-jarvis;
+    background: linear-gradient(135deg, rgba(255, 68, 85, 0.15), rgba(255, 68, 85, 0.05));
+    border-color: rgba(255, 68, 85, 0.4);
+    color: #ff4455;
+  }
+  .btn-jarvis-danger:hover {
+    border-color: rgba(255, 68, 85, 0.7);
+    box-shadow: 0 0 20px rgba(255, 68, 85, 0.25);
+  }
+
+  /* Input Field */
+  .input-jarvis {
+    @apply w-full bg-jarvis-bg/60 text-jarvis-text placeholder-jarvis-text-3;
+    @apply rounded-lg px-4 py-3 outline-none transition-all duration-200;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    backdrop-filter: blur(8px);
+    font-family: 'Inter', sans-serif;
+  }
+  .input-jarvis:focus {
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.08);
+  }
+
+  /* Status Badge */
+  .badge-online {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    color: #00ff88;
+  }
+  .badge-offline {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+    background: rgba(255, 68, 85, 0.1);
+    border: 1px solid rgba(255, 68, 85, 0.3);
+    color: #ff4455;
+  }
+}
+
+/* ── Background Grid ─────────────────────────────────────────────────────── */
+.hex-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.8) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.8) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ── Scan Line Animation ─────────────────────────────────────────────────── */
+.scan-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.6), transparent);
+  animation: scan 8s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Corner Decorations ──────────────────────────────────────────────────── */
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: rgba(0, 212, 255, 0.5);
+}
+.corner-tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
+.corner-tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
+.corner-bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
+.corner-br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+
+/* ── Pulsing Dot ─────────────────────────────────────────────────────────── */
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff88;
+  position: relative;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.4);
+  animation: ripple 2s ease-out infinite;
+}
+
+/* ── Chat Bubbles ────────────────────────────────────────────────────────── */
+.chat-bubble-user {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 212, 255, 0.08));
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 16px 4px 16px 16px;
+}
+.chat-bubble-ai {
+  background: linear-gradient(135deg, rgba(13, 21, 38, 0.9), rgba(17, 29, 51, 0.7));
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  border-radius: 4px 16px 16px 16px;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar-item {
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer;
+  @apply transition-all duration-200 text-jarvis-text-2;
+  font-size: 0.875rem;
+}
+.sidebar-item:hover {
+  background: rgba(0, 212, 255, 0.08);
+  color: #00d4ff;
+}
+.sidebar-item.active {
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+  border-left: 2px solid #00d4ff;
+}
+
+/* ── Voice Orb ───────────────────────────────────────────────────────────── */
+.voice-orb {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.05));
+  border: 2px solid rgba(0, 212, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.voice-orb.listening {
+  animation: pulseGlow 1s ease-in-out infinite;
+  border-color: rgba(0, 212, 255, 0.8);
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.5), rgba(0, 212, 255, 0.1));
+}
+.voice-orb::before, .voice-orb::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  animation: ripple 3s ease-out infinite;
+}
+.voice-orb::before {
+  inset: -15px;
+  animation-delay: 0.5s;
+}
+.voice-orb::after {
+  inset: -30px;
+  animation-delay: 1s;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+.heading-jarvis {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  color: #00d4ff;
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+}
+
+/* ── Loading Spinner ─────────────────────────────────────────────────────── */
+.spinner-jarvis {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 212, 255, 0.1);
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: #fff;
+}
+
+/* ── Markdown Content ────────────────────────────────────────────────────── */
+.markdown-content {
+  @apply space-y-3;
+}
+.markdown-content p {
+  @apply leading-relaxed;
+}
+.markdown-content ul, .markdown-content ol {
+  @apply pl-5 space-y-1;
+}
+.markdown-content ul {
+  @apply list-disc;
+}
+.markdown-content ol {
+  @apply list-decimal;
+}
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  @apply font-orbitron font-semibold text-jarvis-primary mt-4 mb-2;
+}
+.markdown-content h1 { @apply text-lg; }
+.markdown-content h2 { @apply text-base; }
+.markdown-content h3 { @apply text-sm; }
+.markdown-content code:not([class*="language-"]) {
+  @apply bg-jarvis-bg/50 px-1.5 py-0.5 rounded text-jarvis-secondary font-mono text-[0.85em];
+}
+.markdown-content pre {
+  @apply my-3 rounded-xl overflow-hidden border border-jarvis-border/50 !bg-[#0d1526];
+}
+.markdown-content blockquote {
+  @apply border-l-2 border-jarvis-primary/50 pl-4 italic text-jarvis-text-3;
+}
+.markdown-content a {
+  @apply text-jarvis-primary hover:underline;
+}
+.markdown-content table {
+  @apply w-full border-collapse my-3;
+}
+.markdown-content th, .markdown-content td {
+  @apply border border-jarvis-border/30 p-2 text-left;
+}
+.markdown-content th {
+  @apply bg-jarvis-primary/5;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
