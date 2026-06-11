@@ -4,26 +4,27 @@ from typing import Optional
 
 from jose import jwt, JWTError
 
-# Monkeypatch passlib bcrypt wrap bug detection (breaks with bcrypt>=4.0.0)
-import passlib.handlers.bcrypt
-passlib.handlers.bcrypt.detect_wrap_bug = lambda *args, **kwargs: False
-
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    pw_bytes = password.encode('utf-8')
+    if len(pw_bytes) > 72:
+        pw_bytes = pw_bytes[:72]
+    return bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    pw_bytes = plain.encode('utf-8')
+    if len(pw_bytes) > 72:
+        pw_bytes = pw_bytes[:72]
+    return bcrypt.checkpw(pw_bytes, hashed.encode('utf-8'))
 
 
 def generate_reset_token() -> str:

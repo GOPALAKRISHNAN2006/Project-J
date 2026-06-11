@@ -8,8 +8,8 @@ async def test_register():
             response = await client.post(
                 "http://localhost:8000/api/auth/register",
                 json={
-                    "email": "test@example.com",
-                    "name": "Test User",
+                    "email": "admin@jarvis.ai",
+                    "name": "Tony Stark",
                     "password": "password123"
                 }
             )

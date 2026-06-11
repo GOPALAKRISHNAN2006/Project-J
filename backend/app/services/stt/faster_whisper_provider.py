@@ -5,7 +5,7 @@ try:
 except ImportError:
     torch = None
 import numpy as np
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, AsyncGenerator
 from concurrent.futures import ThreadPoolExecutor
 
 try:
@@ -124,6 +124,22 @@ class FasterWhisperProvider(BaseSTTProvider):
             },
             "error": False
         }
+
+    async def stream_transcribe(
+        self, 
+        audio_stream: AsyncGenerator[bytes, None], 
+        **kwargs: Any
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Stream audio chunks and yield partial/final transcripts.
+        Accumulates the stream and runs batch transcription.
+        """
+        buffer = bytearray()
+        async for chunk in audio_stream:
+            buffer.extend(chunk)
+        if buffer:
+            result = await self.transcribe(bytes(buffer), **kwargs)
+            yield result
 
     def get_info(self) -> Dict[str, Any]:
         return {

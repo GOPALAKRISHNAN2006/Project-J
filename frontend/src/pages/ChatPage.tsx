@@ -49,7 +49,13 @@ export default function ChatPage() {
     if (sessionId) {
       chatAPI.getSession(sessionId).then((res) => {
         setActiveSession(res.data)
-        setMessages(res.data.messages || [])
+        setMessages(prev => {
+          // If we already have messages for this session (e.g. optimistic UI during stream), don't overwrite with empty
+          if (prev.length > 0 && res.data.messages.length === 0) {
+            return prev
+          }
+          return res.data.messages || []
+        })
       }).catch(() => navigate('/chat'))
     } else {
       setActiveSession(null)
@@ -113,7 +119,7 @@ export default function ChatPage() {
 
     let sid = sessionId
     if (!sid) {
-      const res = await chatAPI.createSession(messageContent.slice(0, 50))
+      const res = await chatAPI.createSession({ title: messageContent.slice(0, 50), model })
       const session = res.data
       setSessions((prev) => [session, ...prev])
       navigate(`/chat/${session.id}`)

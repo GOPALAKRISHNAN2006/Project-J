@@ -19,7 +19,11 @@ async def check_users():
             users = result.scalars().all()
             print(f"Total users: {len(users)}")
             for user in users:
-                print(f"User: {user.email}, Active: {user.is_active}")
+                print(f"User: {user.email}")
+                print(f"  Active: {user.is_active}")
+                print(f"  AI Provider: {user.ai_provider}")
+                print(f"  Gemini API Key: {user.gemini_api_key}")
+                print(f"  Default Model: {user.default_model}")
         except Exception as e:
             print(f"Error: {e}")
 
