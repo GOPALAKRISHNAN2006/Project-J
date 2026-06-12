@@ -96,7 +96,7 @@ class GeminiProvider(AIProvider):
 
     async def list_models(self) -> List[Dict[str, Any]]:
         return [
-            {"id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash", "provider": "Google", "context": "1M"},
+            {"id": "gemini-3.5-flash", "name": "Gemini 1.5 Flash", "provider": "Google", "context": "1M"},
             {"id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "provider": "Google", "context": "2M"},
             {"id": "gemini-1.0-pro", "name": "Gemini 1.0 Pro", "provider": "Google", "context": "32k"},
         ]

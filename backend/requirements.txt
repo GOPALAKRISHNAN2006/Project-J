@@ -14,7 +14,11 @@ pymongo==4.6.3
 dnspython==2.6.1
 
 # Vector Store
-chromadb==0.5.3
+# chromadb==0.5.3 # Removed to bypass C++ build tools requirement for now
+chromadb-client==0.5.3
+
+# SQLite Fallback
+aiosqlite==0.20.0
 
 # Auth & Security
 python-jose[cryptography]==3.3.0

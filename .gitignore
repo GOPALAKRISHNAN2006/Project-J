@@ -29,3 +29,8 @@ npm-debug.log*
 
 # Docker
 docker-compose.override.yml
+
+# Temporary and local data
+backend/chroma_db/
+backend/uploads/
+scratch/

@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.security import get_current_user
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.chat import (
     ChatRequest, ChatSession, ChatMessage, 
     ChatSessionCreate, ChatSessionSummary, ChatSessionResponse,
@@ -184,10 +185,9 @@ async def send_message(
             user_id=user_id,
             model=req.model or settings.DEFAULT_MODEL,
         )
+        session.messages = []
         db.add(session)
         await db.commit()
-        await db.refresh(session)
-        session.messages = []
 
     # Prepare messages for AI service
     history = []

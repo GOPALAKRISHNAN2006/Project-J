@@ -32,8 +32,10 @@ async def list_automations(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     result = await db.execute(
-        select(Automation).where(Automation.user_id == current_user["user_id"])
+        select(Automation).where(Automation.user_id == uid)
     )
     return [_to_response(a) for a in result.scalars().all()]
 
@@ -44,8 +46,10 @@ async def create_automation(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     automation = Automation(
-        user_id=current_user["user_id"],
+        user_id=uid,
         name=data.name,
         description=data.description,
         trigger_type=data.trigger_type,
@@ -65,10 +69,12 @@ async def get_automation(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     result = await db.execute(
         select(Automation).where(
             Automation.id == automation_id,
-            Automation.user_id == current_user["user_id"],
+            Automation.user_id == uid,
         )
     )
     automation = result.scalar_one_or_none()
@@ -84,10 +90,12 @@ async def update_automation(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     result = await db.execute(
         select(Automation).where(
             Automation.id == automation_id,
-            Automation.user_id == current_user["user_id"],
+            Automation.user_id == uid,
         )
     )
     automation = result.scalar_one_or_none()
@@ -108,10 +116,12 @@ async def delete_automation(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     result = await db.execute(
         select(Automation).where(
             Automation.id == automation_id,
-            Automation.user_id == current_user["user_id"],
+            Automation.user_id == uid,
         )
     )
     automation = result.scalar_one_or_none()
@@ -128,10 +138,12 @@ async def run_automation(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger an automation."""
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
     result = await db.execute(
         select(Automation).where(
             Automation.id == automation_id,
-            Automation.user_id == current_user["user_id"],
+            Automation.user_id == uid,
         )
     )
     automation = result.scalar_one_or_none()
@@ -154,7 +166,9 @@ async def solve_goal_with_agents(
 ):
     """Solve a complex goal using the Nexus-6 Multi-Agent Framework."""
     # Fetch full user object for the orchestrator
-    user_result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    user_result = await db.execute(select(User).where(User.id == uid))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

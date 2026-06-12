@@ -35,7 +35,9 @@ async def transcribe_audio(
     db: AsyncSession = Depends(get_db),
 ):
     """Transcribe uploaded audio file to text using Faster-Whisper."""
-    user_result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    user_result = await db.execute(select(User).where(User.id == uid))
     user = user_result.scalar_one_or_none()
     
     vs = VoiceService(user=user)
@@ -52,7 +54,9 @@ async def synthesize_speech(
     db: AsyncSession = Depends(get_db),
 ):
     """Convert text to speech (TTS) and return audio file."""
-    user_result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    user_result = await db.execute(select(User).where(User.id == uid))
     user = user_result.scalar_one_or_none()
     
     vs = VoiceService(user=user)
@@ -89,7 +93,9 @@ async def voice_interaction(
     The main JARVIS voice entry point.
     Takes audio, returns transcript, text response, and synthesized audio.
     """
-    user_result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    user_result = await db.execute(select(User).where(User.id == uid))
     user = user_result.scalar_one_or_none()
     
     audio_bytes = await file.read()
@@ -152,7 +158,9 @@ async def voice_websocket(
             await websocket.close(code=4002)
             return
             
-        user_result = await db.execute(select(User).where(User.id == user_info["user_id"]))
+        import uuid
+        uid = uuid.UUID(user_info["user_id"]) if isinstance(user_info["user_id"], str) else user_info["user_id"]
+        user_result = await db.execute(select(User).where(User.id == uid))
         user = user_result.scalar_one_or_none()
         if not user:
             await websocket.close(code=4003)
@@ -170,12 +178,35 @@ async def voice_websocket(
                 sess_id = str(uuid.uuid4())
             session_id = sess_id
             
-            # Fetch history from Mongo
-            history = []
-            session_doc = await mongo_db["chat_sessions"].find_one({"id": sess_id})
-            if session_doc:
-                history = session_doc.get("messages", [])
-            
+            # Fetch history
+            from app.models.chat import ChatSession, ChatMessage
+            import uuid
+            history_objs = []
+            if mongo_db:
+                session_doc = await mongo_db["chat_sessions"].find_one({"id": sess_id})
+                if session_doc:
+                    for m in session_doc.get("messages", []):
+                        history_objs.append(ChatMessage(role=m["role"], content=m["content"], model=m.get("model")))
+            else:
+                from app.core.database import AsyncSessionLocal
+                from sqlalchemy import select
+                from sqlalchemy.orm import selectinload
+                try:
+                    sid = uuid.UUID(sess_id) if isinstance(sess_id, str) else sess_id
+                    async with AsyncSessionLocal() as db_session:
+                        result = await db_session.execute(
+                            select(ChatSession)
+                            .where(ChatSession.id == sid)
+                            .options(selectinload(ChatSession.messages))
+                        )
+                        db_sess = result.scalar_one_or_none()
+                        if db_sess:
+                            for m in db_sess.messages:
+                                history_objs.append(ChatMessage(role=m.role, content=m.content, model=m.model))
+                except Exception as e:
+                    import logging
+                    logging.getLogger("jarvis").warning(f"Error loading WS chat history from SQLite: {e}")
+
             # 2. Memory Retrieval (RAG)
             from app.services.memory_service import MemoryService
             from app.core.database import get_chroma_client
@@ -194,13 +225,13 @@ async def voice_websocket(
                 f"{context_str}\n\nKeep your responses concise and conversational for voice interaction."
             )
             
-            history.append({"role": "user", "content": transcript_text})
+            history_objs.append(ChatMessage(role="user", content=transcript_text))
             
             full_response = ""
             current_sentence = ""
             
             async for chunk in orchestrator.ai_service.stream_chat(
-                messages=history,
+                messages=history_objs,
                 model=user.default_model,
                 system_prompt=system_prompt
             ):
@@ -225,16 +256,56 @@ async def voice_websocket(
                 await synthesize_and_send(current_sentence, tts_options)
 
             # Save to history
-            history.append({"role": "assistant", "content": full_response})
-            await mongo_db["chat_sessions"].update_one(
-                {"id": sess_id},
-                {"$set": {
-                    "user_id": str(user.id),
-                    "messages": history,
-                    "updated_at": datetime.utcnow()
-                }},
-                upsert=True
-            )
+            history_objs.append(ChatMessage(role="assistant", content=full_response, model=user.default_model))
+            if mongo_db:
+                messages_list = []
+                for m in history_objs:
+                    messages_list.append({
+                        "role": m.role,
+                        "content": m.content,
+                        "model": m.model
+                    })
+                await mongo_db["chat_sessions"].update_one(
+                    {"id": sess_id},
+                    {"$set": {
+                        "user_id": str(user.id),
+                        "messages": messages_list,
+                        "updated_at": datetime.utcnow()
+                    }},
+                    upsert=True
+                )
+            else:
+                from app.core.database import AsyncSessionLocal
+                try:
+                    sid = uuid.UUID(sess_id) if isinstance(sess_id, str) else sess_id
+                    async with AsyncSessionLocal() as db_session:
+                        from sqlalchemy import delete
+                        db_sess = await db_session.get(ChatSession, sid)
+                        if not db_sess:
+                            db_sess = ChatSession(
+                                id=sid,
+                                user_id=user.id,
+                                title=transcript_text[:60] + ("..." if len(transcript_text) > 60 else ""),
+                                model=user.default_model
+                            )
+                            db_session.add(db_sess)
+                        else:
+                            db_sess.updated_at = datetime.utcnow()
+                        
+                        await db_session.execute(delete(ChatMessage).where(ChatMessage.session_id == sid))
+                        for m in history_objs:
+                            db_msg = ChatMessage(
+                                id=uuid.uuid4(),
+                                session_id=sid,
+                                role=m.role,
+                                content=m.content,
+                                model=m.model
+                            )
+                            db_session.add(db_msg)
+                        await db_session.commit()
+                except Exception as e:
+                    import logging
+                    logging.getLogger("jarvis").warning(f"Error saving WS chat session/messages to SQLite: {e}")
             
             await websocket.send_json({"type": "response_final", "text": full_response, "session_id": sess_id})
 

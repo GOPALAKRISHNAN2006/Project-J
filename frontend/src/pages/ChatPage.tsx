@@ -6,14 +6,14 @@ import {
   ChevronDown, Sparkles, StopCircle, Search, Paperclip, X, Image as ImageIcon,
   FileText, Loader2
 } from 'lucide-react'
-import { chatAPI } from '@/services/api'
+import { chatAPI, settingsAPI } from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
 import GlassCard from '@/components/ui/GlassCard'
 import JarvisButton from '@/components/ui/JarvisButton'
 import MessageBubble from '@/components/chat/MessageBubble'
 import type { ChatMessage, ChatSessionSummary, ChatSession } from '@/types'
 
-const MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'llama3', 'mistral']
+// Deprecated static model list; models are fetched from backend
 
 export default function ChatPage() {
   const { sessionId } = useParams<{ sessionId?: string }>()
@@ -28,9 +28,28 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false)
   const [streaming, setStreaming] = useState(false)
   const [streamContent, setStreamContent] = useState('')
+  // Initialise from auth store, but keep in sync on every user change
   const [model, setModel] = useState(user?.default_model || 'gpt-4o')
   const [showModelPicker, setShowModelPicker] = useState(false)
-  
+  const [availableModels, setAvailableModels] = useState<{id: string, name: string}[]>([])
+
+  // Keep model in sync with the authenticated user’s default model
+  useEffect(() => {
+    if (user?.default_model && user.default_model !== model) {
+      setModel(user.default_model)
+    }
+  }, [user?.default_model])
+
+  // Sync model with the list we fetch from the backend
+  useEffect(() => {
+    if (availableModels.length > 0) {
+      const hasCurrent = availableModels.some(m => m.id === model)
+      if (!hasCurrent) {
+        setModel(availableModels[0].id)
+      }
+    }
+  }, [availableModels, model])
+
   // File upload states
   const [pendingFiles, setPendingFiles] = useState<{ id: string, name: string, type: string, url: string }[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -39,9 +58,12 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Load sessions
+  // Load sessions and models
   useEffect(() => {
     chatAPI.listSessions().then((res) => setSessions(res.data)).catch(() => {})
+    settingsAPI.listModels()
+      .then((res) => setAvailableModels(res.data.models || []))
+      .catch(() => setAvailableModels([]))
   }, [])
 
   // Load session by ID
@@ -403,14 +425,14 @@ export default function ChatPage() {
                     <div className="px-3 py-2 border-b border-jarvis-border/20">
                        <span className="text-[9px] font-mono text-jarvis-text-3 uppercase tracking-widest">Select Core Engine</span>
                     </div>
-                    {MODELS.map((m) => (
+                    {availableModels.map((m) => (
                       <button
-                        key={m}
-                        onClick={() => { setModel(m); setShowModelPicker(false) }}
-                        className={`w-full px-4 py-2.5 text-left text-[11px] font-mono transition-all flex items-center justify-between hover:bg-white/5 ${m === model ? 'text-jarvis-primary bg-jarvis-primary/5' : 'text-jarvis-text-3'}`}
+                        key={m.id}
+                        onClick={() => { setModel(m.id); setShowModelPicker(false) }}
+                        className={`w-full px-4 py-2.5 text-left text-[11px] font-mono transition-all flex items-center justify-between hover:bg-white/5 ${m.id === model ? 'text-jarvis-primary bg-jarvis-primary/5' : 'text-jarvis-text-3'}`}
                       >
-                        {m}
-                        {m === model && <div className="w-1.5 h-1.5 rounded-full bg-jarvis-primary shadow-[0_0_8px_#00d4ff]" />}
+                        {m.name}
+                        {m.id === model && <div className="w-1.5 h-1.5 rounded-full bg-jarvis-primary shadow-[0_0_8px_#00d4ff]" />}
                       </button>
                     ))}
                   </motion.div>

@@ -5,6 +5,23 @@ from datetime import datetime
 from app.models.memory import MemoryEntry, MemoryCategory
 
 
+from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
+
+class GeminiCustomEmbedding(EmbeddingFunction):
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        
+    def __call__(self, input: Documents) -> Embeddings:
+        import google.generativeai as genai
+        genai.configure(api_key=self.api_key)
+        response = genai.embed_content(
+            model="models/embedding-001",
+            contents=input,
+            task_type="retrieval_document"
+        )
+        return response['embedding']
+
+
 class MemoryService:
     """Service for managing vector memories in ChromaDB with categorical semantic search."""
 
@@ -15,9 +32,36 @@ class MemoryService:
         # Format name to be compliant with ChromaDB (3-63 chars, alphanumeric, starts/ends with alphanumeric)
         # Using a hash of user_id might be safer if user_id is long or contains invalid chars
         import hashlib
+        from chromadb.utils import embedding_functions
+        from app.core.config import settings
+        
         user_hash = hashlib.md5(user_id.encode()).hexdigest()[:8]
         name = f"mem_{user_hash}_{collection_name}"[:63]
-        return self.client.get_or_create_collection(name=name)
+        
+        # Prefer cloud-based Google Generative AI embeddings to avoid heavy 80MB local model download
+        if settings.GEMINI_API_KEY:
+            try:
+                local_ef = GeminiCustomEmbedding(api_key=settings.GEMINI_API_KEY)
+                try:
+                    return self.client.get_or_create_collection(name=name, embedding_function=local_ef)
+                except Exception as e:
+                    err_str = str(e)
+                    if "Embedding function conflict" in err_str or "already exists" in err_str:
+                        import logging
+                        logging.getLogger("jarvis").info(f"Recreating ChromaDB collection '{name}' to resolve embedding function conflict.")
+                        try:
+                            self.client.delete_collection(name=name)
+                        except Exception:
+                            pass
+                        return self.client.get_or_create_collection(name=name, embedding_function=local_ef)
+                    raise e
+            except Exception as e:
+                import logging
+                logging.getLogger("jarvis").warning(f"Failed to initialize Gemini custom embedding: {e}. Falling back to local ONNX.")
+                
+        # Fallback to local ONNX embedding function
+        local_ef = embedding_functions.ONNXMiniLM_L6_V2()
+        return self.client.get_or_create_collection(name=name, embedding_function=local_ef)
 
     async def add_memory(
         self,

@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     name: user?.name || '',
     ai_provider: user?.ai_provider || 'gemini',
-    default_model: user?.default_model || 'gemini-1.5-flash',
+    default_model: user?.default_model || 'gemini-3.5-flash',
     system_prompt: user?.system_prompt || '',
     openai_api_key: '',
     openai_base_url: user?.openai_base_url || 'https://api.openai.com/v1',
@@ -55,9 +55,18 @@ export default function SettingsPage() {
   // Fetch models when provider changes
   useEffect(() => {
     if (form.ai_provider) {
+      setModels([])
       settingsAPI.listModels(form.ai_provider)
         .then((res) => {
-          setModels(res.data.models)
+          const fetchedModels = res.data.models || []
+          setModels(fetchedModels)
+          setForm((f) => {
+            const isCurrentValid = fetchedModels.some((m: AIModel) => m.id === f.default_model)
+            return {
+              ...f,
+              default_model: isCurrentValid ? f.default_model : (fetchedModels[0]?.id || f.default_model)
+            }
+          })
         })
         .catch(() => setModels([]))
     }

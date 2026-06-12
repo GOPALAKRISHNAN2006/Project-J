@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -34,7 +37,7 @@ _mongo_client: Optional[AsyncIOMotorClient] = None
 _mongo_db: Optional[AsyncIOMotorDatabase] = None
 
 # ── ChromaDB ───────────────────────────────────────────────────────────────────
-_chroma_client: Optional[chromadb.HttpClient] = None
+_chroma_client = None
 
 
 async def init_db() -> None:
@@ -67,23 +70,35 @@ async def init_db() -> None:
     # 2. MongoDB Initialization (Optional)
     try:
         _mongo_client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
-        _mongo_db = _mongo_client[settings.MONGODB_DB]
         # Test connection
         await _mongo_client.admin.command('ping')
+        _mongo_db = _mongo_client[settings.MONGODB_DB]
     except Exception as e:
         logger.warning(f"MongoDB connection failed. Chat history will not be persisted. Error: {e}")
+        if _mongo_client:
+            _mongo_client.close()
+            _mongo_client = None
         _mongo_db = None
 
     # 3. ChromaDB Initialization (Optional)
     try:
+        if chromadb is None:
+            raise ImportError("ChromaDB is not installed")
         _chroma_client = chromadb.HttpClient(
             host=settings.CHROMA_HOST, port=settings.CHROMA_PORT
         )
         # Simple health check
         _chroma_client.heartbeat()
-    except Exception:
-        logger.warning("ChromaDB connection failed. Long-term memory will not be available.")
-        _chroma_client = None
+    except Exception as e:
+        logger.warning(f"ChromaDB HttpClient connection failed. Falling back to local PersistentClient. Error: {e}")
+        try:
+            import os
+            os.makedirs("./chroma_db", exist_ok=True)
+            _chroma_client = chromadb.PersistentClient(path="./chroma_db")
+            logger.info("Successfully initialized local ChromaDB PersistentClient.")
+        except Exception as ex:
+            logger.warning(f"ChromaDB PersistentClient initialization failed. Long-term memory will not be available. Error: {ex}")
+            _chroma_client = None
 
 
 async def close_db() -> None:
@@ -106,5 +121,5 @@ def get_mongo_db() -> Optional[AsyncIOMotorDatabase]:
     return _mongo_db
 
 
-def get_chroma_client() -> Optional[chromadb.HttpClient]:
+def get_chroma_client():
     return _chroma_client

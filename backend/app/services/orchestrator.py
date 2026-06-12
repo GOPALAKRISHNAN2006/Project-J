@@ -45,15 +45,58 @@ class JarvisOrchestrator:
 
         # ── 2. Handle Chat Context & AI Response ──────────────────────────────
         # Resolve or create session
+        import uuid
         if session_id:
-            session_doc = await self.mongo_db["chat_sessions"].find_one(
-                {"id": session_id, "user_id": str(self.user.id)}
-            )
-            if session_doc:
-                session_doc.pop("_id", None)
-                session = ChatSession(**session_doc)
+            if self.mongo_db:
+                session_doc = await self.mongo_db["chat_sessions"].find_one(
+                    {"id": session_id, "user_id": str(self.user.id)}
+                )
+                if session_doc:
+                    session_doc.pop("_id", None)
+                    messages_data = session_doc.pop("messages", [])
+                    session = ChatSession(**session_doc)
+                    session.messages = [ChatMessage(**m) for m in messages_data]
+                else:
+                    session = self._create_new_session()
             else:
-                session = self._create_new_session()
+                from app.core.database import AsyncSessionLocal
+                from sqlalchemy import select
+                from sqlalchemy.orm import selectinload
+                try:
+                    sid = uuid.UUID(session_id) if isinstance(session_id, str) else session_id
+                    async with AsyncSessionLocal() as db_session:
+                        result = await db_session.execute(
+                            select(ChatSession)
+                            .where(ChatSession.id == sid, ChatSession.user_id == self.user.id)
+                            .options(selectinload(ChatSession.messages))
+                        )
+                        db_sess = result.scalar_one_or_none()
+                        if db_sess:
+                            session = ChatSession(
+                                id=db_sess.id,
+                                user_id=db_sess.user_id,
+                                title=db_sess.title,
+                                model=db_sess.model,
+                                created_at=db_sess.created_at,
+                                updated_at=db_sess.updated_at
+                            )
+                            session.messages = [
+                                ChatMessage(
+                                    id=m.id,
+                                    session_id=m.session_id,
+                                    role=m.role,
+                                    content=m.content,
+                                    tokens=m.tokens,
+                                    model=m.model,
+                                    created_at=m.created_at
+                                ) for m in db_sess.messages
+                            ]
+                        else:
+                            session = self._create_new_session()
+                except Exception as e:
+                    import logging
+                    logging.getLogger("jarvis").warning(f"Error loading chat session from SQLite: {e}")
+                    session = self._create_new_session()
         else:
             session = self._create_new_session()
 
@@ -113,22 +156,73 @@ class JarvisOrchestrator:
         session.messages.append(assistant_msg)
         session.updated_at = datetime.utcnow()
 
-        # Save session update to MongoDB
-        await self.mongo_db["chat_sessions"].update_one(
-            {"id": session.id},
-            {"$set": {
-                "messages": [m.model_dump() for m in session.messages],
-                "updated_at": session.updated_at
-            }},
-            upsert=True
-        )
+        # Save session update
+        if self.mongo_db:
+            messages_list = []
+            for m in session.messages:
+                messages_list.append({
+                    "role": m.role,
+                    "content": m.content,
+                    "model": m.model,
+                    "tokens": getattr(m, 'tokens', None)
+                })
+            await self.mongo_db["chat_sessions"].update_one(
+                {"id": str(session.id)},
+                {"$set": {
+                    "user_id": str(self.user.id),
+                    "title": session.title,
+                    "model": session.model,
+                    "messages": messages_list,
+                    "updated_at": session.updated_at
+                }},
+                upsert=True
+            )
+        else:
+            from app.core.database import AsyncSessionLocal
+            try:
+                sid = uuid.UUID(str(session.id)) if isinstance(session.id, str) else session.id
+                async with AsyncSessionLocal() as db_session:
+                    from sqlalchemy import select, delete
+                    db_sess = await db_session.get(ChatSession, sid)
+                    if not db_sess:
+                        db_sess = ChatSession(
+                            id=sid,
+                            user_id=session.user_id,
+                            title=session.title,
+                            model=session.model,
+                            created_at=session.created_at,
+                            updated_at=session.updated_at
+                        )
+                        db_session.add(db_sess)
+                    else:
+                        db_sess.title = session.title
+                        db_sess.model = session.model
+                        db_sess.updated_at = session.updated_at
+                    
+                    # Re-populate messages by deleting old ones and adding the updated list
+                    await db_session.execute(delete(ChatMessage).where(ChatMessage.session_id == sid))
+                    for m in session.messages:
+                        db_msg = ChatMessage(
+                            id=m.id or uuid.uuid4(),
+                            session_id=sid,
+                            role=m.role,
+                            content=m.content,
+                            tokens=m.tokens,
+                            model=m.model,
+                            created_at=m.created_at
+                        )
+                        db_session.add(db_msg)
+                    await db_session.commit()
+            except Exception as e:
+                import logging
+                logging.getLogger("jarvis").warning(f"Error saving chat session to SQLite: {e}")
 
         # ── 3. Text to Speech ────────────────────────────────────────────────
         # Synthesize the AI's response
         audio_path = await self.voice_service.synthesize(ai_text)
 
         return {
-            "session_id": session.id,
+            "session_id": str(session.id),
             "transcript": user_text,
             "ai_response": ai_text,
             "audio_path": audio_path, # Frontend will use this to stream back
@@ -138,9 +232,14 @@ class JarvisOrchestrator:
         }
 
     def _create_new_session(self) -> ChatSession:
+        import uuid
+        uid = uuid.uuid4()
+        user_id = self.user.id
+        if isinstance(user_id, str):
+            user_id = uuid.UUID(user_id)
         return ChatSession(
-            id=str(uuid.uuid4()),
-            user_id=str(self.user.id),
+            id=uid,
+            user_id=user_id,
             title="Voice Interaction",
             model=self.user.default_model,
             messages=[]

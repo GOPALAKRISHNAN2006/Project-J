@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     GEMINI_API_KEY: str = ""
     DEFAULT_PROVIDER: str = "gemini"
-    DEFAULT_MODEL: str = "gemini-1.5-flash"
+    DEFAULT_MODEL: str = "gemini-3.5-flash"
 
     # Ollama - Removed (Transitioned to OpenAI-only)
     # HASS_URL: Optional[str] = None

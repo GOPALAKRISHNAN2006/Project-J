@@ -39,8 +39,44 @@ class PiperProvider(BaseTTSProvider):
                 
             return output_path
         except Exception as e:
-            # Fallback to gTTS if Piper is not installed or fails
-            return await self._fallback_gtts(text)
+            # Fallback to local pyttsx3 first, then gTTS if pyttsx3 fails
+            import logging
+            logger = logging.getLogger("jarvis")
+            logger.info(f"Local piper execution failed ({e}). Attempting local pyttsx3 fallback...")
+            try:
+                return await self._fallback_pyttsx3(text)
+            except Exception as pyttsx3_err:
+                logger.warning(f"pyttsx3 fallback failed: {pyttsx3_err}. Trying gTTS...")
+                try:
+                    return await self._fallback_gtts(text)
+                except Exception as gtts_err:
+                    logger.error(f"gTTS fallback failed: {gtts_err}")
+                    raise gtts_err
+
+    async def _fallback_pyttsx3(self, text: str) -> str:
+        import pyttsx3
+        loop = asyncio.get_event_loop()
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        tmp_path = tmp.name
+        tmp.close()
+        
+        def _speak():
+            # In Windows, we must initialize pythoncom for comtypes if running in threads
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except ImportError:
+                pass
+            engine = pyttsx3.init()
+            engine.save_to_file(text, tmp_path)
+            engine.runAndWait()
+            try:
+                engine.stop()
+            except:
+                pass
+                
+        await loop.run_in_executor(None, _speak)
+        return tmp_path
 
     async def _fallback_gtts(self, text: str) -> str:
         from gtts import gTTS

@@ -35,7 +35,7 @@ class User(Base):
     openai_api_key = Column(String(255), nullable=True)
     openai_base_url = Column(String(512), nullable=True)
     gemini_api_key = Column(String(255), nullable=True)
-    default_model = Column(String(100), default="gemini-1.5-flash")
+    default_model = Column(String(100), default="gemini-3.5-flash")
     system_prompt = Column(Text, nullable=True)
 
     # Voice Configuration
@@ -123,3 +123,16 @@ class UserUpdateSettings(BaseModel):
     tts_provider: Optional[str] = None
     elevenlabs_api_key: Optional[str] = None
     voice_id: Optional[str] = None
+
+
+# Prevent SQLAlchemy relationship mapping errors by importing related models
+try:
+    from app.models.chat import ChatSession
+    from app.models.memory import Memory
+    from app.models.task import Task
+    from app.models.automation import Automation
+    from app.models.calendar import CalendarEvent
+    from app.models.voice import VoiceClone, VoiceInteraction
+    from app.models.plugin import UserPlugin
+except ImportError:
+    pass

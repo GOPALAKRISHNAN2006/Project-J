@@ -16,7 +16,9 @@ async def get_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current user settings."""
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -31,14 +33,25 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """Update user profile and AI settings."""
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Apply updates field‑by‑field
     for field, value in updates.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
 
+    # Flush the session so the DB sees the change **before** commit.
+    # This is especially important for columns that may have default
+    # values (like `default_model`). Without flush the ORM may skip the
+    # UPDATE if it thinks nothing changed.
+    await db.flush()
+
+    # Commit the transaction and refresh the instance to return the
+    # latest data to the client.
     await db.commit()
     await db.refresh(user)
 
@@ -59,7 +72,9 @@ async def list_models(
     db: AsyncSession = Depends(get_db),
 ):
     """Return list of supported AI models from a specific provider or the current one."""
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
+    import uuid
+    uid = uuid.UUID(current_user["user_id"]) if isinstance(current_user["user_id"], str) else current_user["user_id"]
+    result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

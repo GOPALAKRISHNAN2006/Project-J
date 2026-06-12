@@ -19,7 +19,7 @@ class ChatSession(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(255), default="New Chat")
-    model = Column(String(100), default="gemini-1.5-flash")
+    model = Column(String(100), default="gemini-3.5-flash")
     is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -85,7 +85,7 @@ class ChatRequest(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     title: Optional[str] = "New Chat"
-    model: Optional[str] = "gemini-1.5-flash"
+    model: Optional[str] = "gemini-3.5-flash"
 
 
 class ChatSessionSummary(BaseModel):
